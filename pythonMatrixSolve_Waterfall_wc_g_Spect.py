@@ -77,8 +77,8 @@ class NElectronMatrix:
         A12 = np.identity(N+1)
         #A12 = np.array([[Decimal(x) for x in y ] for y in A12])
 
-        B11 = []
-        B12 = []
+        B11 = np.zeros([N+1,N+1])
+        B12 = np.zeros([N+1,N+1])
         
         k=bi
 
@@ -86,32 +86,13 @@ class NElectronMatrix:
         ###### make B11
 
         for i in range(0,N+1):
-            row = []
         
             if i==0:
-            
-                for j in range(0,N+1):
-                    if j == 0:
-                        element = -omega0**2 /(1-N*k**2)
-                
-                    else:
-                        element = bo*omegaVector[0][j]**2/(1-N*k**2)
-                
-                    row.append(element)
+                row = np.append(-omega0**2 /(1-N*k**2),bo*omegaVector[0][j]**2/(1-N*k**2))
     
             else:
-                for j in range(0,N+1):
-                    if j ==0:
-                        element = bi*omega0**2/(1-N*k**2)
-            
-                    if j==i and j!=0:
-                        element = -omegaVector[0][j]**2*(1 + ( k**2/(1-N*k**2) ) )
-            
-                    if j!=0 and j!=i:
-                        element = -k**2*omegaVector[0][j]**2/(1-N*k**2)
-                
-                    row.append(element)
-        
+                row = np.append(bi*omega0**2/(1-N*k**2),-k**2*omegaVector[0][j]**2/(1-N*k**2))
+                row[i]=-omegaVector[0][j]**2*(1 + ( k**2/(1-N*k**2) ) )
         
             B11.append(row)
     
@@ -121,68 +102,18 @@ class NElectronMatrix:
             row = []
     
             if i==0:
-
-                for j in range(0,N+1):
-                    if j == 0:
-                        element = -omega0/Qo/(1-N*k**2)
-                
-                    else:
-                        element = bo*omegaVector[0][j]/Qi/(1-N*k**2)
-                
-                    row.append(element)
-    
+                row=np.append(-omega0/Qo/(1-N*k**2),bo*omegaVector[0][j]/Qi/(1-N*k**2))  
             else:
-                for j in range(N+1):
-                    if j ==0:
-                        element = bi*omega0/Qo/(1-N*k**2)
-            
-                    if j==i and j!=0:
-                        element = -omegaVector[0][j]/Qi*(1 + ( k**2/(1-N*k**2) ) )
-            
-                    if j!=0 and j!=i:
-                        element = -k**2*omegaVector[0][j]/Qi/(1-N*k**2)
-                
-                    row.append(element)
-        
+                row = np.append(bi*omega0/Qo/(1-N*k**2),-k**2*omegaVector[0][j]/Qi/(1-N*k**2))
+                row[i]=-omegaVector[0][j]/Qi*(1 + ( k**2/(1-N*k**2) ) )       
         
             B12.append(row)
-
-
-        B11 = np.array(B11)
-        B12 = np.array(B12)
-
 
         M = np.vstack([np.hstack([A11,A12]),np.hstack([B11,B12])])
         
         #print "Matrix Sparse? ",sparse.issparse(M)
 
         return M
-    
-    def get_sym_rates(self):
-        bo = bi = self.bi
-        Qo = self.Qo
-        omega0= self.omega0
-        omegaVector = self.omegaVector
-        Nprec = self.Nprec
-        N =self.N
-        
-        bo= bi
-        k=np.sqrt(bo*bi)
-        MM = self.MakeMatrix(N,bi,bo,Qo,omegaVector)
-        M = Matrix(MM).applyfunc(lambda x:sympy.N(x, Nprec))
-        
-        vv = M.eigenvals()        
-        vvN = [complex(sympy.N(i)).real for i in vv.keys() ]
-        
-        maxrate=max(vvN)
-        minrate = min(vvN)
-        maxnonzerorate = max(filter(lambda a: a != 0, vvN))
-        raterange= np.array([minrate, maxnonzerorate ,maxrate])
-        
-        self.eigenvalues = vv
-        self.allrates = vvN
-        self.raterate =raterange
-        return raterange
         
     def getMeanRates(self):
         bo = bi = self.bi
@@ -206,54 +137,7 @@ class NElectronMatrix:
         
         
         return [self.cavRate,self.eRate]        
-        
-    def get_LA_rates(self):
-        bo = bi = self.bi
-        Qo = self.Qo
-        omega0= self.omega0
-        omegaVector = self.omegaVector
-        Nprec = self.Nprec
-        N =self.N
-        
-        bo= bi
-        k=np.sqrt(bo*bi)
-        MM = self.MakeMatrix(N,bi,bo,Qo,omegaVector)
-        w,v=LA.eig(MM)       
-        vvN = [i.real for i in w ]
-        
-        maxrate=max(vvN)
-        minrate = min(vvN)
-        maxnonzerorate = max(filter(lambda a: a != 0, vvN))
-        raterange= np.array([minrate, maxnonzerorate ,maxrate])
-        
-        self.eigenvalues = w
-        self.allrates = vvN
-        self.raterate =raterange
-        return raterange
-        
-    def Make_WalterMatrix(self):
-        self.alpha = sympy.Symbol('alpha')
-        e00 = self.omega0**2 + self.alpha*self.omega0/self.Qo + self.alpha**2
-        eii = self.omegaVector[0][1:]**2 + self.alpha*self.omegaVector[0][1:]/self.QVector + self.alpha**2
-        e0i = self.alpha**2*self.bi
-        ei0 = e0i
-        
-                
-        
-        M = np.diag(np.append(e00,eii))
-        M[:,0][1:] = np.ones(N)*e0i
-        M[0][1:]=np.ones(N)*ei0
-        print "Symbolifiying matrix..."
-        self.WalterM = Matrix(M)
-        
-    def get_Walter_rates(self):
-        self.Make_WalterMatrix()
-        print "solving matrix..."
-        self.WalterEigenValues = sympy.roots(self.WalterM.det(),self.alpha)
-        rates  = [complex(sympy.N(i,self.Nprec)).real for i in self.WalterEigenValues.keys() ]
-        return np.array(rates)
-        
-        
+
         
 def binFreqs(x,xbins):
     Ba=[]
