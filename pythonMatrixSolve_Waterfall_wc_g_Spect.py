@@ -34,9 +34,9 @@ import matplotlib
 matplotlib.rcParams.update({'font.size': 20, 'font.family': 'serif'})
 
 
-#import cProfile, pstats, StringIO
-#pr = cProfile.Profile()
-#pr.enable()
+import cProfile, pstats, StringIO
+pr = cProfile.Profile()
+pr.enable()
 
 
 class NElectronMatrix:
@@ -88,26 +88,25 @@ class NElectronMatrix:
         for i in range(0,N+1):
         
             if i==0:
-                row = np.append(-omega0**2 /(1-N*k**2),bo*omegaVector[0][j]**2/(1-N*k**2))
+                row = np.append(-omega0**2 /(1-N*k**2),bo*omegaVector[0][1:]**2/(1-N*k**2))
     
             else:
-                row = np.append(bi*omega0**2/(1-N*k**2),-k**2*omegaVector[0][j]**2/(1-N*k**2))
-                row[i]=-omegaVector[0][j]**2*(1 + ( k**2/(1-N*k**2) ) )
+                row = np.append(bi*omega0**2/(1-N*k**2),-k**2*omegaVector[0][1:]**2/(1-N*k**2))
+                row[i]=-omegaVector[0][i]**2*(1 + ( k**2/(1-N*k**2) ) )
         
-            B11.append(row)
+            B11[i]=row
     
 
         ###################################### make B12
         for i in range(0,N+1):
-            row = []
-    
+
             if i==0:
-                row=np.append(-omega0/Qo/(1-N*k**2),bo*omegaVector[0][j]/Qi/(1-N*k**2))  
+                row=np.append(-omega0/Qo/(1-N*k**2),bo*omegaVector[0][1:]/Qi/(1-N*k**2))  
             else:
-                row = np.append(bi*omega0/Qo/(1-N*k**2),-k**2*omegaVector[0][j]/Qi/(1-N*k**2))
-                row[i]=-omegaVector[0][j]/Qi*(1 + ( k**2/(1-N*k**2) ) )       
+                row = np.append(bi*omega0/Qo/(1-N*k**2),-k**2*omegaVector[0][1:]/Qi/(1-N*k**2))
+                row[i]=-omegaVector[0][i]/Qi*(1 + ( k**2/(1-N*k**2) ) )       
         
-            B12.append(row)
+            B12[i]=row
 
         M = np.vstack([np.hstack([A11,A12]),np.hstack([B11,B12])])
         
@@ -176,10 +175,22 @@ eBW = omega0/Qi
 gBins= np.arange(0,5*ModeBW,ModeBW/100)/2/np.pi
 
 
-Numbers = np.arange(500,501,1)
+Numbers = np.arange(1000,1001,1)
+n=Numbers[0]
 
 NeRate = np.zeros(len(Numbers))
 NCRate =  np.zeros(len(Numbers))
+
+omegaVector = [np.append([omega0],sigma*np.random.randn(n)+omega0)]
+SIM = NElectronMatrix(n,bi,Qo,omega0,omegaVector,Qi,Nprec)
+x = SIM.getMeanRates()
+
+pr.disable()
+s = StringIO.StringIO()
+sortby = 'cumulative'
+ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
+ps.print_stats()
+print s.getvalue()
 
 
 n=Numbers[0]
